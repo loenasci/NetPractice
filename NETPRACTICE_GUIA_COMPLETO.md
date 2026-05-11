@@ -9,10 +9,11 @@
 2. [Endereçamento IPv4](#endereçamento-ipv4)
 3. [Máscaras e CIDR](#máscaras-e-cidr)
 4. [Cálculo de Redes](#cálculo-de-redes)
-5. [Roteamento e Gateways](#roteamento-e-gateways)
-6. [Método de Resolução (Checklist)](#método-de-resolução-checklist)
-7. [Frases para Avaliação](#frases-para-avaliação)
-8. [Exemplos Resolvidos](#exemplos-resolvidos)
+5. [Todos os Cálculos Essenciais](#todos-os-cálculos-essenciais)
+6. [Roteamento e Gateways](#roteamento-e-gateways)
+7. [Método de Resolução (Checklist)](#método-de-resolução-checklist)
+8. [Frases para Avaliação](#frases-para-avaliação)
+9. [Exemplos Resolvidos](#exemplos-resolvidos)
 
 ---
 
@@ -270,6 +271,660 @@ Passo 3: Se redes ≠ diferentes → REDES DIFERENTES (precisam roteador)
 
 ---
 
+## Todos os Cálculos Essenciais
+
+Esta seção lista **todos os cálculos** que você pode precisar ao resolver NetPractice, com explicação teórica do por quê.
+
+### 1️⃣ Cálculo: Converter CIDR (ex.: /24) → Máscara em Decimal
+
+**Por que fazer:**
+- Às vezes a interface mostra apenas `/24`, mas você precisa do valor em decimal (`255.255.255.0`).
+- Algumas pessoas acham mais fácil trabalhar com decimais; outras com CIDR.
+
+**Como fazer:**
+- CIDR = número de bits 1 contínuos na máscara.
+- Cada octeto com 8 bits 1 vale 255.
+- Octeto "quebrado" tem valor que corresponde aos bits 1 restantes.
+
+**Fórmula rápida:**
+```
+/8  = 255.0.0.0
+/16 = 255.255.0.0
+/24 = 255.255.255.0
+/25 = 255.255.255.128
+/26 = 255.255.255.192
+/27 = 255.255.255.224
+/28 = 255.255.255.240
+/29 = 255.255.255.248
+/30 = 255.255.255.252
+```
+
+**Tabela octeto quebrado:**
+```
+/17 → /16 + 1 bit  → octeto 3 = 128 → 255.255.128.0
+/18 → /16 + 2 bits → octeto 3 = 192 → 255.255.192.0
+/19 → /16 + 3 bits → octeto 3 = 224 → 255.255.224.0
+/20 → /16 + 4 bits → octeto 3 = 240 → 255.255.240.0
+```
+
+**Exemplo NetPractice (Level 1):**
+```
+Você vê na interface: "Mask: 255.255.255.0"
+Você precisa saber: qual é o CIDR?
+Solução: conte bits 1 = 8 + 8 + 8 + 0 = 24 → /24
+```
+
+---
+
+### 2️⃣ Cálculo: Converter Máscara Decimal → CIDR (ex.: 255.255.255.192)
+
+**Por que fazer:**
+- Interface NetPractice às vezes mostra apenas em decimal.
+- Você precisa saber o CIDR para usar em cálculos de rede.
+
+**Como fazer:**
+- Conte bits 1 em cada octeto.
+- Use a tabela de octetos:
+  - 255 = 8 bits 1
+  - 254 = 7 bits 1
+  - 252 = 6 bits 1
+  - 248 = 5 bits 1
+  - 240 = 4 bits 1
+  - 224 = 3 bits 1
+  - 192 = 2 bits 1
+  - 128 = 1 bit 1
+  - 0 = 0 bits 1
+
+**Exemplo:**
+```
+Máscara: 255.255.255.192
+Bits:    8 + 8 + 8 + 2 = 26
+CIDR: /26
+```
+
+**Exemplo NetPractice (Level 2):**
+```
+Interface mostra: "Mask: 255.255.255.32"
+Primeiro problema: 32 não é valor válido de octeto (máximo 255)!
+→ Erro detectado: máscara inválida
+(Só valores válidos: 255, 254, 252, 248, 240, 224, 192, 128, 0)
+```
+
+---
+
+### 3️⃣ Cálculo: Calcular "Bloco" (subnet step) para o octeto quebrado
+
+**Por que fazer:**
+- O bloco determina o "salto" entre sub-redes.
+- Sem isso, você não consegue calcular rede e broadcast rápido.
+
+**Como fazer:**
+```
+Bloco = 256 - valor_do_octeto_quebrado
+```
+
+**Por que funciona:**
+- Um octeto tem 256 valores possíveis (0–255).
+- Se a máscara "consome" alguns valores para rede, o resto fica para host.
+- O bloco é o tamanho de cada grupo.
+
+**Exemplos:**
+```
+/24 (máscara 255.255.255.0)    → bloco = 256 - 0 = 256
+/25 (máscara 255.255.255.128)  → bloco = 256 - 128 = 128
+/26 (máscara 255.255.255.192)  → bloco = 256 - 192 = 64
+/27 (máscara 255.255.255.224)  → bloco = 256 - 224 = 32
+/28 (máscara 255.255.255.240)  → bloco = 256 - 240 = 16
+/29 (máscara 255.255.255.248)  → bloco = 256 - 248 = 8
+/30 (máscara 255.255.255.252)  → bloco = 256 - 252 = 4
+```
+
+**Exemplo NetPractice (Level 3+):**
+```
+Interface C1: IP 127.0.0.1 / Mask 255.255.255.252
+Passo 1: máscara 252 (não é 255 nem 0) → octeto quebrado
+Passo 2: bloco = 256 - 252 = 4
+Resultado: redes saltam de 4 em 4
+  Sub-redes: 127.0.0.0, 127.0.0.4, 127.0.0.8, 127.0.0.12, ...
+```
+
+---
+
+### 4️⃣ Cálculo: Determinar Endereço de Rede (Network Address)
+
+**Por que fazer:**
+- Network address é o primeiro IP de uma sub-rede e é reservado (não pode usar em host).
+- Precisas saber qual é para validar se um IP é rede ou para determinar a rede de um host.
+
+**Como fazer (método do bloco):**
+
+```
+Passo 1: Identifique o octeto quebrado (aquele que não é 255 ou 0 na máscara)
+Passo 2: Calcule bloco = 256 - máscara
+Passo 3: Divida o valor do octeto IP pelo bloco (arredonde para baixo)
+Passo 4: Multiplique o resultado pelo bloco
+Resultado: esse é o valor do octeto de rede
+```
+
+**Exemplo 1:** IP `192.168.1.130` com máscara `/26` (255.255.255.192)
+```
+Octeto quebrado: último (192)
+Bloco: 256 - 192 = 64
+
+Valor do octeto IP: 130
+Cálculo: 130 / 64 = 2.03... → arredondar para 2 (floor)
+Rede: 2 × 64 = 128
+
+Network address: 192.168.1.128
+```
+
+**Exemplo 2:** IP `10.20.50.5` com máscara `/24` (255.255.255.0)
+```
+Octeto quebrado: último (0)
+Bloco: 256 - 0 = 256 (todo o octeto é host)
+
+Então todos os IPs começados com 10.20.50.X estão na mesma rede.
+Network address: 10.20.50.0
+```
+
+**Exemplo NetPractice (Level 1):**
+```
+A1: 104.93.23.364 com 255.255.255.0 ← inválido (octeto 364 > 255)
+B1: 104.98.23.12 com 255.255.255.0 ← rede = 104.98.23.0
+
+Problema: A1 e B1 não estão na mesma rede!
+A1 deveria ser 104.98.23.X para combinar com B1
+
+Verificação:
+- B1 = 104.98.23.12 / 255.255.255.0
+- Bloco: 256 - 0 = 256
+- Rede: 104.98.23.0
+- A1 deve ser corrigida para 104.98.23.13 (mesmo rede 104.98.23.0)
+```
+
+**Exemplo 3:** IP `172.16.50.200` com máscara `/16` (255.255.0.0)
+```
+Octeto quebrado: segundo (0)
+Bloco: 256 - 0 = 256
+
+Então a rede é determinada pelos primeiros 2 octetos.
+Network address: 172.16.0.0
+```
+
+---
+
+### 5️⃣ Cálculo: Determinar Endereço de Broadcast
+
+**Por que fazer:**
+- Broadcast address é o último IP de uma sub-rede e é reservado (não pode usar em host).
+- Precisas saber qual é para validar se um IP é broadcast.
+
+**Como fazer:**
+```
+Broadcast = Network + Bloco - 1
+```
+
+**Por que funciona:**
+- Network é o primeiro IP válido.
+- Bloco é o tamanho da sub-rede.
+- Broadcast é o último IP desse range.
+
+**Exemplo 1:** Network `192.168.1.128/26`
+```
+Network: 192.168.1.128
+Bloco: 64
+Broadcast: 128 + 64 - 1 = 192.168.1.191
+```
+
+**Exemplo 2:** Network `10.0.0.0/24`
+```
+Network: 10.0.0.0
+Bloco: 256
+Broadcast: 0 + 256 - 1 = 10.0.0.255
+```
+
+**Exemplo NetPractice (Level 2):**
+```
+C1: 127.0.0.1 / 255.255.255.252 (/30)
+D1: 127.0.0.4 / 255.255.255.252 (/30)
+
+Análise:
+- Bloco = 256 - 252 = 4
+- C1 rede: 127.0.0.0/30, broadcast: 127.0.0.3
+  Hosts válidos: 127.0.0.1, 127.0.0.2
+- D1 = 127.0.0.4?
+  127.0.0.4 / 4 = 1 → rede começa em 1 × 4 = 4
+  Rede D1: 127.0.0.4/30
+  → D1 é NETWORK ADDRESS (inválido para host)!
+  
+Correção: D1 deve ser 127.0.0.2 (está em 127.0.0.0/30 como C1)
+```
+
+---
+
+### 6️⃣ Cálculo: Determinação de Hosts Válidos em uma Sub-rede
+
+**Por que fazer:**
+- Você precisa saber qual é o intervalo de IPs que pode atribuir a máquinas.
+- Hosts válidos = todos exceto network e broadcast.
+
+**Como fazer:**
+```
+Hosts válidos: de (Network + 1) até (Broadcast - 1)
+```
+
+**Exemplo:** Sub-rede `192.168.1.128/26`
+```
+Network: 192.168.1.128
+Broadcast: 192.168.1.191
+
+Hosts válidos: 192.168.1.129 até 192.168.1.190
+Total: 62 hosts possíveis
+```
+
+**Fórmula de quantidade de hosts:**
+```
+Número de hosts = Bloco - 2
+(O -2 é para remover network e broadcast)
+```
+
+**Exemplo:** `/26` (bloco 64)
+```
+Hosts: 64 - 2 = 62
+```
+
+---
+
+### 7️⃣ Cálculo: Validação de IP (É válido? É rede? É broadcast?)
+
+**Por que fazer:**
+- Um IP pode parecer válido (octetos 0–255) mas ser na verdade network ou broadcast.
+- Você precisa validar antes de preencher a interface.
+
+**Como fazer:**
+
+#### Passo 1: Validar octetos
+```
+Cada octeto entre 0–255?
+Se não → IP inválido
+```
+
+#### Passo 2: Calcular network da máscara
+```
+Rede = IP AND Máscara (usando bloco)
+```
+
+#### Passo 3: Verificar se é network
+```
+IP é network se: IP == Network
+Exemplo: 192.168.1.128 com /26 (rede 192.168.1.128)
+→ É network ❌
+```
+
+#### Passo 4: Verificar se é broadcast
+```
+IP é broadcast se: IP == Broadcast
+Exemplo: 192.168.1.191 com /26 (broadcast 192.168.1.191)
+→ É broadcast ❌
+```
+
+#### Passo 5: Se passou nos testes, é válido
+```
+IP é host válido ✅
+```
+
+**Exemplo completo:** IP `192.168.1.130` com `/26`
+```
+Octetos: 192, 168, 1, 130 → todos 0–255 ✓
+Rede: 192.168.1.128
+Broadcast: 192.168.1.191
+130 ≠ 128 (não é network) ✓
+130 ≠ 191 (não é broadcast) ✓
+→ IP válido ✅
+```
+
+**Exemplo NetPractice (Level 1):**
+```
+A1: 104.98.23.13 / 255.255.255.0 (/24)
+B1: 104.98.23.12 / 255.255.255.0 (/24)
+
+Cálculo:
+- Bloco = 256 - 0 = 256
+- A1 rede: 104.98.23.0, broadcast: 104.98.23.255
+  Hosts válidos: 104.98.23.1 até 104.98.23.254
+  13 está em range ✓
+- B1 rede: 104.98.23.0, broadcast: 104.98.23.255
+  Hosts válidos: 104.98.23.1 até 104.98.23.254
+  12 está em range ✓
+  
+Ambos têm 254 hosts possíveis: 104.98.23.1 até 104.98.23.254
+```
+
+---
+
+### 7️⃣ Cálculo: Validação de IP (É válido? É rede? É broadcast?)
+
+**Por que fazer:**
+- Um IP pode parecer válido (octetos 0–255) mas ser na verdade network ou broadcast.
+- Você precisa validar antes de preencher a interface.
+
+**Como fazer:**
+
+#### Passo 1: Validar octetos
+```
+Cada octeto entre 0–255?
+Se não → IP inválido
+```
+
+#### Passo 2: Calcular network da máscara
+```
+Rede = IP AND Máscara (usando bloco)
+```
+
+#### Passo 3: Verificar se é network
+```
+IP é network se: IP == Network
+Exemplo: 192.168.1.128 com /26 (rede 192.168.1.128)
+→ É network ❌
+```
+
+#### Passo 4: Verificar se é broadcast
+```
+IP é broadcast se: IP == Broadcast
+Exemplo: 192.168.1.191 com /26 (broadcast 192.168.1.191)
+→ É broadcast ❌
+```
+
+#### Passo 5: Se passou nos testes, é válido
+```
+IP é host válido ✅
+```
+
+**Exemplo completo:** IP `192.168.1.130` com `/26`
+```
+Octetos: 192, 168, 1, 130 → todos 0–255 ✓
+Rede: 192.168.1.128
+Broadcast: 192.168.1.191
+130 ≠ 128 (não é network) ✓
+130 ≠ 191 (não é broadcast) ✓
+→ IP válido ✅
+```
+
+**Exemplo NetPractice (Level 1):**
+```
+A1: 104.93.23.364 / 255.255.255.0
+Passo 1: octeto 364 > 255 ❌ → INVÁLIDO
+
+B1: 104.98.23.12 / 255.255.255.0
+Passo 1: octetos 104, 98, 23, 12 → todos 0–255 ✓
+Passo 2: rede = 104.98.23.0 (bloco 256)
+Passo 3: 12 ≠ 0 (não é network) ✓
+Passo 4: 12 ≠ 255 (não é broadcast) ✓
+→ IP válido ✅
+```
+
+---
+
+### 8️⃣ Cálculo: Verificar se dois IPs estão na MESMA rede
+
+**Por que fazer:**
+- Se dois IPs estão na mesma rede, comunicam direto (sem gateway).
+- Se estão em redes diferentes, precisam de roteador.
+
+**Como fazer:**
+
+```
+Passo 1: Calcule rede de IP1
+Passo 2: Calcule rede de IP2
+Passo 3: Compare
+  Se rede1 == rede2 → MESMA REDE (direto)
+  Se rede1 ≠ rede2 → REDES DIFERENTES (precisa gateway/rota)
+```
+
+**Importante:** a máscara deve ser a mesma nos dois IPs!
+
+**Exemplo:** 
+```
+IP1: 192.168.1.10 / 255.255.255.0 → rede 192.168.1.0/24
+IP2: 192.168.1.50 / 255.255.255.0 → rede 192.168.1.0/24
+Resultado: MESMA REDE ✅ (podem falar direto)
+
+IP1: 192.168.1.10 / 255.255.255.0 → rede 192.168.1.0/24
+IP2: 192.168.2.10 / 255.255.255.0 → rede 192.168.2.0/24
+Resultado: REDES DIFERENTES ❌ (precisam gateway)
+```
+
+**Exemplo NetPractice (Level 1):**
+```
+A1: 104.98.23.13 / 255.255.255.0 → rede 104.98.23.0/24
+B1: 104.98.23.12 / 255.255.255.0 → rede 104.98.23.0/24
+Resultado: MESMA REDE ✅ (conseguem falar direto, sem roteador)
+
+C1: 211.191.29.75 / 255.255.0.0 → rede 211.191.0.0/16
+D1: 211.190.301.42 / 255.255.0.0 ← inválido (octeto 301)
+Correção: D1 deve ser 211.191.30.42 → rede 211.191.0.0/16
+Resultado: MESMA REDE ✅ (conseguem falar direto)
+```
+
+---
+
+### 9️⃣ Cálculo: Quantidade de Sub-redes em um /XX
+
+**Por que fazer:**
+- Entender quantas redes diferentes você consegue criar dentro de um intervalo.
+- Útil para validar coerência do cenário.
+
+**Como fazer:**
+```
+Número de sub-redes = 2 ^ (bits_de_host_acima_do_octeto)
+```
+
+**Exemplo:** `/24` em um `/16`
+```
+/16 tem 16 bits de rede, /24 tem 24 bits de rede
+Diferença: 24 - 16 = 8 bits para subnetting
+Sub-redes: 2^8 = 256 redes possíveis dentro de um /16
+```
+
+**Exemplo NetPractice (níveis avançados):**
+```
+Cenário: Roteador conecta múltiplas redes /26 dentro de /24
+/24 = 256 endereços
+/26 = 4 endereços por rede
+Sub-redes possíveis: 256 / 4 = 4 redes /26 dentro de /24
+  192.168.1.0/26 (0-63)
+  192.168.1.64/26 (64-127)
+  192.168.1.128/26 (128-191)
+  192.168.1.192/26 (192-255)
+```
+
+---
+
+### 🔟 Cálculo: Validação de Gateway
+
+**Por que fazer:**
+- Gateway (próximo salto) precisa estar na MESMA sub-rede do host.
+- Caso contrário, o host não consegue alcançar o gateway.
+
+**Como fazer:**
+
+```
+Passo 1: Calcule rede do host
+Passo 2: Calcule rede do gateway (com mesma máscara)
+Passo 3: Verifique se são iguais
+  Se rede_host == rede_gateway → OK, gateway é acessível
+  Se rede_host ≠ rede_gateway → ERRO, gateway não é alcançável
+```
+
+**Exemplo correto:**
+```
+Host: 192.168.1.50 / 255.255.255.0 → rede 192.168.1.0/24
+Gateway: 192.168.1.1 / 255.255.255.0 → rede 192.168.1.0/24
+Resultado: OK ✅ (host consegue alcançar gateway)
+```
+
+**Exemplo errado:**
+```
+Host: 192.168.1.50 / 255.255.255.0 → rede 192.168.1.0/24
+Gateway: 192.168.2.1 / 255.255.255.0 → rede 192.168.2.0/24
+Resultado: ERRO ❌ (host não consegue alcançar gateway)
+```
+
+**Exemplo NetPractice (Nível com roteador):**
+```
+Host A: 10.0.0.5 / 255.255.255.0 (rede 10.0.0.0/24)
+Gateway padrão de A: 10.0.0.1
+
+Validação:
+- Rede de A: 10.0.0.0/24
+- Rede de gateway: 10.0.0.0/24 (com mesma máscara)
+- Resultado: OK ✅ (gateway é alcançável)
+```
+
+---
+
+### 1️⃣1️⃣ Cálculo: Determinação de Rota (Reachability)
+
+**Por que fazer:**
+- Mesmo com gateway correto, o roteador precisa SABER como chegar na rede de destino.
+- Sem rota explícita, ocorre erro "No forward way".
+
+**Como fazer:**
+
+```
+Passo 1: Identifique rede de origem e rede de destino
+Passo 2: Veja o roteador tem rota para destino
+  Rota existente: "Se destino em X, encaminhe via interface Y"
+Passo 3: Verifique se a interface Y consegue alcançar destino
+  Interface do roteador deve estar na mesma rede do destino
+Resultado: Se tudo OK, fluxo passa
+```
+
+**Exemplo (cenário 3 redes):**
+```
+Host A: 10.0.0.5/24 quer falar com Host C: 172.16.0.5/24
+Roteador (R1):
+  - Interface 1 (eth0): 10.0.0.1/24 (conecta rede de A)
+  - Interface 2 (eth1): 172.16.0.1/24 (conecta rede de C)
+
+Rota em R1: "Se destino em 172.16.0.0/24, encaminhe via eth1"
+
+Fluxo:
+1. A envia para gateway 10.0.0.1
+2. R1 recebe em eth0
+3. R1 procura rota para 172.16.0.5 → encontra "via eth1"
+4. R1 encaminha pela eth1 (172.16.0.1)
+5. C recebe ✅
+```
+
+**Exemplo NetPractice (Nível com 2+ roteadores):**
+```
+Host A: 10.0.0.5 quer falar com Host D: 192.168.1.5
+
+Caminho esperado:
+- A (10.0.0.0/24) → gateway R1 (10.0.0.1)
+- R1 recebe em eth0, procura rota para 192.168.1.0/24
+- R1 encontra rota: eth1 conecta 192.168.1.0/24
+- R1 encaminha via eth1 (192.168.1.1)
+- D recebe em sua interface
+
+Validação:
+- R1 tem interface em 10.0.0.0/24? ✓
+- R1 tem interface em 192.168.1.0/24? ✓
+- R1 tem rota "dest 192.168.1.0/24 via eth1"? ✓
+- D conhece gateway para responder? ✓
+```
+
+---
+
+### 1️⃣2️⃣ Cálculo: Verificar Octeto Quebrado (Qual é?)
+
+**Por que fazer:**
+- O octeto quebrado determina qual será o "salto" entre sub-redes.
+- Se você não o identifica corretamente, todo o resto do cálculo erra.
+
+**Como fazer:**
+
+```
+Verifique cada octeto da máscara:
+- Se é 255 → completamente de rede, passe pro próximo
+- Se é 0 → completamente de host, passe pro próximo
+- Se é outro (192, 224, 240, etc.) → esse é o quebrado, PARE
+```
+
+**Exemplos:**
+```
+Máscara 255.255.255.0 → octeto quebrado: nenhum! (é /24, bloco 256)
+Máscara 255.255.255.128 → octeto quebrado: o último (128)
+Máscara 255.255.0.0 → octeto quebrado: nenhum! (é /16, bloco 256 no terceiro octeto)
+Máscara 255.255.255.240 → octeto quebrado: o último (240)
+```
+
+**Exemplo NetPractice (Level 3+):**
+```
+Interface: 192.168.1.70 / 255.255.255.192
+Octeto quebrado?
+- 1º octeto: 255 → de rede
+- 2º octeto: 255 → de rede
+- 3º octeto: 255 → de rede
+- 4º octeto: 192 → não é 255 nem 0 → É O QUEBRADO!
+
+Bloco: 256 - 192 = 64
+Sub-redes no último octeto: 0, 64, 128, 192
+70 cai em: 70 / 64 = 1 → 1 × 64 = 64
+Rede: 192.168.1.64/26
+```
+
+---
+
+### 1️⃣3️⃣ Cálculo: AND Binário (Teórico Puro)
+
+**Por que fazer:**
+- É o fundamento matemático de como calcular rede.
+- Não é obrigatório saber em detalhe, mas entender ajuda.
+
+**Como fazer:**
+
+```
+AND bit por bit:
+1 AND 1 = 1
+1 AND 0 = 0
+0 AND 1 = 0
+0 AND 0 = 0
+
+IP AND Máscara = Rede
+```
+
+**Exemplo:** IP `192.168.1.130`, Máscara `255.255.255.192`
+```
+Último octeto em binário:
+IP:      10000010 (130)
+Máscara: 11000000 (192)
+AND:     10000000 (128)
+
+Resultado: 192.168.1.128
+```
+
+**Por que o método do bloco é mais rápido:** você não precisa converter pra binário; é apenas divisão e multiplicação.
+
+---
+
+### Resumo: Qual Cálculo Usar Quando?
+
+| Situação | Cálculo |
+|----------|---------|
+| "Que prefixo é 255.255.255.192?" | #2 (decimal → CIDR) |
+| "Que máscara é /26?" | #1 (CIDR → decimal) |
+| "Qual é a rede de 10.20.50.130/25?" | #4 (bloco) |
+| "Qual é o broadcast de 10.20.50.130/25?" | #5 (network + bloco - 1) |
+| "Quais IPs posso usar como host em 10.20.50.0/26?" | #6 (network+1 até broadcast-1) |
+| "192.168.1.0 com /24 é válido para host?" | #7 (validação) |
+| "192.168.1.50 e 192.168.2.50 falam direto?" | #8 (mesma rede?) |
+| "192.168.1.254 é gateway válido para 192.168.1.50?" | #10 (mesmo octeto de rede?) |
+| "Como host A alcança host C via R1?" | #11 (reachability) |
+
+---
+
 ## Roteamento e Gateways
 
 ### O que é um Gateway?
@@ -521,6 +1176,50 @@ Interface D1: 211.191.30.42 / 255.255.0.0   ✅
 - A1 rede = 104.98.23.0, B1 rede = 104.98.23.0 → **mesma rede ✅**
 - C1 rede = 211.191.0.0, D1 rede = 211.191.0.0 → **mesma rede ✅**
 
+### Guia Operacional (este Level 1 do print) — passo a passo detalhado
+
+Use este roteiro exatamente na interface do NetPractice:
+
+1. **Leia os objetivos no topo**
+   - Objetivo 1: host A falar com host B
+   - Objetivo 2: host C falar com host D
+   - Não há roteador no cenário, então cada par precisa estar na **mesma sub-rede**.
+
+2. **Valide os 4 IPs antes de qualquer cálculo**
+   - A1 = `104.93.23.364` → inválido (`364 > 255`)
+   - B1 = `104.98.23.12` → válido
+   - C1 = `211.191.29.75` → válido
+   - D1 = `211.190.301.42` → inválido (`301 > 255`)
+
+3. **Resolva o par A-B (máscara /24)**
+   - B1 está em `/24` (`255.255.255.0`), então a rede é `104.98.23.0/24`.
+   - Para A falar com B sem roteador, A1 também deve ser `104.98.23.X`.
+   - Escolha um host válido (não `.0`, não `.255`, não repetido):  
+     **A1 = `104.98.23.13`**.
+
+4. **Resolva o par C-D (máscara /16)**
+   - C1 está em `/16` (`255.255.0.0`), então a rede é `211.191.0.0/16`.
+   - Para C falar com D sem roteador, D1 também deve começar com `211.191`.
+   - Ajuste D1 para um host válido:  
+     **D1 = `211.191.30.42`**.
+
+5. **Preenchimento final no level**
+   - A1: `104.98.23.13 / 255.255.255.0`
+   - B1: `104.98.23.12 / 255.255.255.0` (mantém)
+   - C1: `211.191.29.75 / 255.255.0.0` (mantém)
+   - D1: `211.191.30.42 / 255.255.0.0`
+
+6. **Como justificar na avaliação (explicação curta e forte)**
+   - \"Primeiro removi IPs inválidos (>255).  
+   Depois forcei cada par para a mesma rede, pois não existe roteador no cenário.  
+   A-B em `104.98.23.0/24` e C-D em `211.191.0.0/16`.  
+   Também garanti que os IPs escolhidos são hosts válidos (não rede, não broadcast, não duplicados).\"  
+
+7. **Erros clássicos desse level**
+   - Corrigir só o octeto inválido e esquecer a sub-rede.
+   - Manter A1 como `104.93...` enquanto B1 está em `104.98...` com `/24`.
+   - Achar que por ter \"104\" no início já é a mesma rede (não é; com `/24`, importam os 3 primeiros octetos).
+
 ---
 
 ### Exemplo 2: Cenário com /25
@@ -657,15 +1356,268 @@ IP é broadcast?
 ```
 
 ### Truque: Ordem de análise em nível complexo
+Quando o cenário tem vários hosts e roteadores, siga sempre a mesma ordem.  
+Isso evita erro de lógica (ex.: tentar corrigir rota antes de perceber IP inválido).
+
+#### Passo 1) Validar TODOS os IPs (0-255 por octeto)
+**Como fazer:**
+- Verifique interface por interface.
+- Cada IP deve ter 4 octetos e cada octeto deve estar em `0..255`.
+
+**Teoria por trás:**
+- IPv4 tem 32 bits (4 octetos de 8 bits).  
+- Um octeto de 8 bits só representa valores de 0 a 255.  
+- Se aparecer `301`, `364`, `-1`, etc., o endereço nem existe na pilha IP.
+
+**Erro típico que esse passo evita:** perder tempo com máscara/rota de um IP inválido.
+
+#### Passo 2) Validar TODAS as máscaras
+**Como fazer:**
+- Confirme se a máscara é válida em CIDR contínuo (bits 1 seguidos de bits 0).
+- Máscaras comuns no NetPractice: `/8`, `/16`, `/24`, `/25`, `/26`, `/27`, `/28`, `/29`, `/30`.
+- Em decimal, valores válidos por octeto são: `255, 254, 252, 248, 240, 224, 192, 128, 0`.
+
+**Teoria por trás:**
+- A máscara define fronteira entre **rede** e **host**.
+- Sem máscara válida, você não consegue determinar rede, broadcast e roteamento corretamente.
+
+**Erro típico que esse passo evita:** assumir que dois hosts estão na mesma rede só pelo “formato” do IP.
+
+#### Passo 3) Calcular TODAS as redes
+**Como fazer:**
+- Para cada interface, calcule:
+  - endereço de rede
+  - broadcast
+  - faixa de hosts válidos
+- Método rápido: no octeto quebrado, `bloco = 256 - máscara`.
+
+**Teoria por trás:**
+- A decisão “fala direto ou via roteador” depende da rede resultante (`IP AND máscara`).
+- Endereço de rede e broadcast são reservados e não podem ser atribuídos a hosts.
+
+**Mini-exemplo:**
+- `192.168.10.70/26` -> máscara `255.255.255.192`, bloco `64`
+- Redes possíveis no último octeto: `0, 64, 128, 192`
+- 70 cai no bloco `64-127`:
+  - rede = `192.168.10.64`
+  - broadcast = `192.168.10.127`
+  - hosts válidos = `.65` a `.126`
+
+#### Passo 4) Listar TODAS as conectividades requeridas
+**Como fazer:**
+- Leia o enunciado e anote os objetivos de comunicação (ex.: A -> B, C -> D).
+- Trate cada objetivo como um “teste” independente.
+
+**Teoria por trás:**
+- Em redes, “estar configurado” não basta; você precisa validar o **fluxo de origem -> destino**.
+- Um cenário pode ter parte funcionando e parte quebrada.
+
+**Erro típico que esse passo evita:** corrigir só um objetivo e esquecer os outros.
+
+#### Passo 5) Identificar quem fala com quem (caminho)
+**Como fazer:**
+- Para cada objetivo, desenhe o caminho lógico:
+  - origem
+  - interface de saída da origem
+  - gateway (se houver)
+  - roteador(es)
+  - rede de destino
+  - host destino
+
+**Teoria por trás:**
+- Pacote IP sempre segue decisão de roteamento por salto.
+- Se você não conhece o caminho, não sabe onde o tráfego está quebrando.
+
+**Erro típico que esse passo evita:** culpar “a rede inteira” quando o problema é apenas um gateway.
+
+#### Passo 6) Checar se conseguem (mesma rede) ou se faltam gateways
+**Como fazer:**
+- Se origem e destino estão na mesma rede: comunicação direta (sem gateway).
+- Se estão em redes diferentes: origem precisa de gateway válido na própria rede.
+- O roteador também precisa de interface/rota para continuar o encaminhamento.
+
+**Teoria por trás:**
+- Host só envia direto para quem está na mesma sub-rede (mesmo domínio L2).
+- Para outra rede, o próximo salto é o gateway padrão.
+
+**Checklist rápido deste passo:**
+- gateway pertence à mesma rede do host?
+- interface do roteador no lado de destino está correta?
+- existe rota até a rede de destino?
+
+#### Passo 7) Descrever tabelas de rota (se necessário)
+**Como fazer:**
+- Quando houver roteadores, explicite rotas no formato:
+  - `destino/prefixo -> next hop` (ou interface de saída).
+- Inclua rota padrão (`0.0.0.0/0`) quando for o caso.
+
+**Teoria por trás:**
+- Roteador não “adivinha” caminho: ele consulta tabela de rotas.
+- Sem rota correspondente, ocorre erro de encaminhamento (`No forward way`).
+
+**Exemplo conceitual:**
+- R1 conectado em `10.0.0.0/24` e `192.168.1.0/24`
+- Rota em host de `10.0.0.5`: default -> `10.0.0.1`
+- Rota em host de `192.168.1.8`: default -> `192.168.1.1`
+- Resultado: tráfego cruza redes via R1.
+
+#### Regra de ouro para prova
+Sempre corrija nesta ordem:
+1. IP inválido  
+2. máscara inválida  
+3. rede/broadcast/duplicado  
+4. gateway  
+5. rota  
+
+Essa sequência reduz muito retrabalho e te dá uma explicação sólida na avaliação.
+
+---
+
+### Guia Operacional — Level 2 (Router conectando 2 redes)
+
+**Enunciado:**
+- Goal 1: host B (Computer B) needs to communicate with host A (Computer A)
+- Goal 2: host D (Computer D) needs to communicate with host C (Computer C)
+- Status: KO — "No forward way"
+
+**Dados iniciais do print:**
 ```
-1. Validar TODOS os IPs (0-255 por octeto)
-2. Validar TODAS as máscaras
-3. Calcular TODAS as redes
-4. Listar TODAS as conectividades requeridas
-5. Identificar quem fala com quem
-6. Checar se conseguem (mesma rede) ou se faltam gateways
-7. Descrever tabelas de rota se necessário
+Interface A1: IP 192.168.29.1 / Mask 255.255.255.224
+Interface B1: IP 192.168.29.222 / Mask 255.255.255.32
+Interface C1: IP 127.0.0.1 / Mask 255.255.255.252
+Interface D1: IP 127.0.0.4 / Mask /30
 ```
+
+#### Aplicando os 7 Passos:
+
+**Passo 1) Validar TODOS os IPs**
+```
+A1: 192.168.29.1 ✓ válido
+B1: 192.168.29.222 ✓ válido
+C1: 127.0.0.1 ✓ válido
+D1: 127.0.0.4 ✓ válido
+```
+
+**Passo 2) Validar TODAS as máscaras**
+```
+A1: 255.255.255.224 ✓ válida (/27)
+B1: 255.255.255.32 ❌ INVÁLIDA! (32 não é um valor válido de octeto de máscara)
+     Valores válidos: 255, 254, 252, 248, 240, 224, 192, 128, 0
+C1: 255.255.255.252 ✓ válida (/30)
+D1: /30 (255.255.255.252) ✓ válida
+```
+
+**Problema encontrado:** B1 tem máscara inválida.
+
+**Passo 3) Calcular TODAS as redes**
+
+Para A1 (192.168.29.1/27):
+```
+Máscara: 255.255.255.224 → bloco = 256 - 224 = 32
+IP octeto: 1
+Posição: 1 / 32 = 0 → 0
+Rede A1: 192.168.29.0/27
+Broadcast: 192.168.29.31
+Hosts válidos: 192.168.29.1 até 192.168.29.30
+A1 (1) é válido ✓
+```
+
+Para B1 com máscara corrigida para /27 (192.168.29.222/27):
+```
+Máscara: 255.255.255.224 → bloco = 32
+IP octeto: 222
+Posição: 222 / 32 = 6 (arredonda) → 6
+Rede: 6 × 32 = 192
+Rede B1: 192.168.29.192/27
+Broadcast: 192.168.29.223
+Hosts válidos: 192.168.29.193 até 192.168.29.222
+B1 (222) é válido ✓ MAS em rede diferente de A1!
+```
+
+Para C1 (127.0.0.1/30):
+```
+Máscara: 255.255.255.252 → bloco = 256 - 252 = 4
+IP octeto: 1
+Posição: 1 / 4 = 0 → 0
+Rede C1: 127.0.0.0/30
+Broadcast: 127.0.0.3
+Hosts válidos: 127.0.0.1 até 127.0.0.2
+C1 (1) é válido ✓
+```
+
+Para D1 (127.0.0.4/30):
+```
+Máscara: 255.255.255.252 → bloco = 4
+IP octeto: 4
+Posição: 4 / 4 = 1 → 1
+Rede: 1 × 4 = 4
+Rede D1: 127.0.0.4/30
+Network address: 127.0.0.4
+Broadcast: 127.0.0.7
+D1 (4) é REDE, não host! ❌ Inválido
+```
+
+**Problemas encontrados:**
+1. B1 tem máscara inválida (32 não é válido)
+2. B1 (mesmo com máscara corrigida) está em rede diferente de A1
+3. D1 é network address, não host válido
+
+**Passo 4) Listar conectividades requeridas**
+- Computer B falar com Computer A
+- Computer D falar com Computer C
+
+**Passo 5) Identificar caminho**
+- B1 -> A1: são hosts diferentes, precisam estar na mesma rede ou haver roteador
+- D1 -> C1: são hosts diferentes, precisam estar na mesma rede ou haver roteador
+
+**Passo 6) Checar se conseguem**
+
+Cenário atual (com correções de máscara):
+- A1 está em `192.168.29.0/27`
+- B1 estaria em `192.168.29.192/27` (rede diferente!)
+- C1 está em `127.0.0.0/30`
+- D1 seria invalid (é rede)
+
+Conclusão: não conseguem comunicar direto; precisaríamos de roteador conectando ambas redes.  
+Mas no diagrama não há roteador, então **ambos os pares precisam estar na MESMA rede**.
+
+**Solução:**
+
+Para o par A-B:
+- A1: `192.168.29.1/27` (rede 192.168.29.0/27) — mantém
+- B1: precisa estar em 192.168.29.0/27 também
+  - Máscara corrigida: `255.255.255.224` (não 32)
+  - IP: `192.168.29.2` (qualquer host válido em 1-30)
+  
+Para o par C-D:
+- C1: `127.0.0.1/30` (rede 127.0.0.0/30) — mantém
+- D1: precisa estar em 127.0.0.0/30 também
+  - Máscara corrigida: `255.255.255.252` (já é /30)
+  - IP: `127.0.0.2` (não pode ser 4, pois 4 é rede)
+
+**Valores finais para preencher:**
+```
+A1: 192.168.29.1 / 255.255.255.224 (mantém)
+B1: 192.168.29.2 / 255.255.255.224 (corrige IP e máscara)
+C1: 127.0.0.1 / 255.255.255.252 (mantém)
+D1: 127.0.0.2 / 255.255.255.252 (corrige IP e máscara)
+```
+
+**Prova:**
+- A1 rede = 192.168.29.0/27, B1 rede = 192.168.29.0/27 → **mesma rede ✅**
+- C1 rede = 127.0.0.0/30, D1 rede = 127.0.0.0/30 → **mesma rede ✅**
+
+**Explicação para avaliação:**
+"Primeiro identifiquei que B1 tinha máscara inválida (255.255.255.32 não existe).  
+Depois calculei as redes: A1 e B1 eram versões diferentes de 192.168.29.0/27, então A estaria em 0-31 e B estaria em 192-223, redes diferentes.  
+Como não há roteador, forcei ambos para mesma rede: A-B em 192.168.29.0/27 e C-D em 127.0.0.0/30.  
+Também corrigi D1 que era network address (não host válido), movendo para 127.0.0.2."
+
+**Erros clássicos desse level:**
+- Esquecer que máscara .32 é inválida (confundir com IP válido).
+- Tentar "consertar" B1 só o IP, mantendo máscara inválida.
+- Não perceber que D1=4 é network address com /30.
+- Usar 127.0.0.x sem saber que é loopback (mas neste level funciona como rede comum).
 
 ---
 
